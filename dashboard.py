@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import mysql.connector
+import pymysql
 import concurrent.futures
 from datetime import date, timedelta
 import warnings
@@ -39,11 +39,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── DB ────────────────────────────────────────────────────────────────────────
-DB = dict(
-    host='datadash-restore-1.c5k0ah8qcmmb.ap-south-1.rds.amazonaws.com',
-    database='dash-development', user='moksh_ahuja',
-    password='moksh_ahuja#wetg', port=3306, connection_timeout=30
-)
+def _db_cfg() -> dict:
+    """Pull creds from Streamlit secrets (cloud) or fall back to local defaults."""
+    cfg = st.secrets.get("db", {})
+    return dict(
+        host     = cfg.get("host",     "datadash-restore-1.c5k0ah8qcmmb.ap-south-1.rds.amazonaws.com"),
+        db       = cfg.get("database", "dash-development"),
+        user     = cfg.get("user",     "moksh_ahuja"),
+        password = cfg.get("password", "moksh_ahuja#wetg"),
+        port     = int(cfg.get("port", 3306)),
+        connect_timeout = 30,
+        charset  = "utf8mb4",
+    )
 
 # The 4 dashboards we care about (URL slug → display label)
 DASH_MAP = {
@@ -58,7 +65,7 @@ DASH_LABELS = list(DASH_MAP.values())     # ordered display cols
 @st.cache_data(ttl=300, show_spinner=False)
 def Q(sql: str) -> pd.DataFrame:
     try:
-        c = mysql.connector.connect(**DB)
+        c = pymysql.connect(**_db_cfg())
         df = pd.read_sql(sql, c); c.close(); return df
     except Exception as e:
         st.error(f"DB: {e}"); return pd.DataFrame()
