@@ -40,8 +40,11 @@ st.markdown("""
 
 # ── DB ────────────────────────────────────────────────────────────────────────
 def _db_cfg() -> dict:
-    """Pull creds from Streamlit secrets (cloud) or fall back to local defaults."""
-    cfg = st.secrets.get("db", {})
+    """Streamlit Cloud: reads from secrets. Local: falls back to hardcoded defaults."""
+    try:
+        cfg = st.secrets.get("db", {})
+    except Exception:
+        cfg = {}
     return dict(
         host     = cfg.get("host",     "datadash-restore-1.c5k0ah8qcmmb.ap-south-1.rds.amazonaws.com"),
         db       = cfg.get("database", "dash-development"),
